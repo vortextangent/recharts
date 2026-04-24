@@ -42,6 +42,7 @@ export const apiCates = [
       'usePlotArea',
       'useChartWidth',
       'useChartHeight',
+      'useChartLayout',
       'getNiceTickValues',
       'Global',
       'getRelativeCoordinate',
@@ -71,6 +72,7 @@ export const apiCates = [
       'ErrorBar',
       'Funnel',
       'useCartesianScale',
+      'useCartesianChartLayout',
       'useXAxisScale',
       'useYAxisScale',
       'useXAxisInverseScale',
@@ -94,6 +96,7 @@ export const apiCates = [
       'PolarRadiusAxis',
       'createRadialChart',
       'createCentricChart',
+      'usePolarChartLayout',
     ],
   },
   {
