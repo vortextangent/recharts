@@ -8,6 +8,11 @@ import { resolveDefaultProps } from '../util/resolveDefaultProps';
 import { svgPropertiesAndEvents } from '../util/svgPropertiesAndEvents';
 import { roundTemplateLiteral } from '../util/round';
 
+const FULL_CIRCLE_EPSILON = 0.0001;
+
+const isFullCircle = (startAngle: number, endAngle: number) =>
+  Math.abs(Math.abs(endAngle - startAngle) - 360) < FULL_CIRCLE_EPSILON;
+
 const getDeltaAngle = (startAngle: number, endAngle: number) => {
   const sign = mathSign(endAngle - startAngle);
   const deltaAngle = Math.min(Math.abs(endAngle - startAngle), 359.999);
@@ -49,12 +54,49 @@ const getTangentCircle = ({
 };
 
 const getSectorPath = ({ cx, cy, innerRadius, outerRadius, startAngle, endAngle }: GeometrySector) => {
+  const rawAngle = endAngle - startAngle;
   const angle = getDeltaAngle(startAngle, endAngle);
+  const fullCircle = isFullCircle(startAngle, endAngle);
 
   // When the angle of sector equals to 360, star point and end point coincide
   const tempEndAngle = startAngle + angle;
   const outerStartPoint = polarToCartesian(cx, cy, outerRadius, startAngle);
   const outerEndPoint = polarToCartesian(cx, cy, outerRadius, tempEndAngle);
+
+  if (fullCircle) {
+    const midAngle = startAngle + rawAngle / 2;
+
+    const outerStart = polarToCartesian(cx, cy, outerRadius, startAngle);
+    const outerMid = polarToCartesian(cx, cy, outerRadius, midAngle);
+    const outerEnd = polarToCartesian(cx, cy, outerRadius, endAngle);
+
+    let path = roundTemplateLiteral`
+    M ${outerStart.x},${outerStart.y}
+    A ${outerRadius},${outerRadius},0,1,${+(rawAngle < 0)},
+      ${outerMid.x},${outerMid.y}
+    A ${outerRadius},${outerRadius},0,1,${+(rawAngle < 0)},
+      ${outerEnd.x},${outerEnd.y}
+  `;
+
+    if (innerRadius > 0) {
+      const innerStart = polarToCartesian(cx, cy, innerRadius, startAngle);
+      const innerMid = polarToCartesian(cx, cy, innerRadius, midAngle);
+      const innerEnd = polarToCartesian(cx, cy, innerRadius, endAngle);
+
+      path += roundTemplateLiteral`
+      L ${innerEnd.x},${innerEnd.y}
+      A ${innerRadius},${innerRadius},0,1,${+(rawAngle > 0)},
+        ${innerMid.x},${innerMid.y}
+      A ${innerRadius},${innerRadius},0,1,${+(rawAngle > 0)},
+        ${innerStart.x},${innerStart.y}
+      Z
+    `;
+    } else {
+      path += roundTemplateLiteral`L ${cx},${cy} Z`;
+    }
+
+    return path;
+  }
 
   let path = roundTemplateLiteral`M ${outerStartPoint.x},${outerStartPoint.y}
     A ${outerRadius},${outerRadius},0,
@@ -308,7 +350,7 @@ export const Sector: React.FC<Props> = sectorProps => {
   const cr = getPercentValue(cornerRadius, deltaRadius, 0, true);
   let path;
 
-  if (cr > 0 && Math.abs(startAngle - endAngle) < 360) {
+  if (cr > 0 && !isFullCircle(startAngle, endAngle)) {
     path = getSectorWithCorner({
       cx,
       cy,
